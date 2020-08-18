@@ -330,8 +330,6 @@ function downloadFile(upload) {
     var totalSegments = upload.totalSegments;
     var index = 0;
 
-    assembleFile(upload); return;
-
     fetchSegment();
     
     function fetchSegment() {
