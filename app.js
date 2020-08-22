@@ -340,19 +340,21 @@ function downloadFile(upload) {
         https.get(upload.segments[index], (response) => {
 
             var length = parseInt(response.headers["content-length"]);
-            var data = "";
+	    console.log(response.headers["content-type"]);
+	    var written = 0;
+            var data = Buffer.alloc(length);
 
             printDownloadProgress(data.length, length);
 
             response.on("error", (err) => {
                 console.error(err);
                 console.log("Retrying failed download...");
-                fetchSegment();
+                setTimeout(fetchSegment, 2000);
             });
             
             response.on("data", (chunk) => {
-                data += chunk;
-                printDownloadProgress(data.length, length);
+                written += chunk.copy(data, written);
+                printDownloadProgress(written, length);
             });
 
             response.on("end", () => {
@@ -367,7 +369,9 @@ function downloadFile(upload) {
                     assembleFile(upload);
                 }
             });
-        });
+        }).on("error", (err) => {
+	    console.error(err);                                           console.log("Retrying failed download...");                   setTimeout(fetchSegment, 2000);
+	});
     }
 }
 
