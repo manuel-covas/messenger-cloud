@@ -8,7 +8,7 @@ const https = require("https");
 
 module.exports.printDownloadProgress = printDownloadProgress;
 
-const maxSegmentSize = 300000;
+const maxSegmentSize = 23000000;
 
 const syntax = "Usage:\n"+
                "    put <path>\n"+
