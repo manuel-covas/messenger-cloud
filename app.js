@@ -6,7 +6,9 @@ const crypto = require('crypto');
 const login = require("facebook-chat-api");
 const https = require("https");
 
-const maxSegmentSize = 23000000;
+module.exports.printDownloadProgress = printDownloadProgress;
+
+const maxSegmentSize = 300000;
 
 const syntax = "Usage:\n"+
                "    put <path>\n"+
@@ -146,7 +148,7 @@ function handleMessage(err, event) {
 
         case "message":
             if (event.threadID != selfID) {
-                //console.log("Ignoring message on other thread '"+event.body+"'"); return;
+                return;
             }
 
             var messageBody;
@@ -205,9 +207,12 @@ function sendFile(filePath, fileName) {
         var segmentPath = "uploads/"+fileName+"-"+index+".bin";
 
         fs.writeFileSync(segmentPath, segments[index]);
-        console.log("Uploading " + (index + 1) + "/" + segments.length + " - " + segmentPath);
+        console.log("\nUploading " + (index + 1) + "/" + segments.length + " - " + segmentPath);
 
-        var messageID = crypto.randomBytes(8).toString("hex");
+        var fileReadStream = fs.createReadStream(segmentPath);
+	var fileSize = fs.statSync(segmentPath).size;
+	var completed = false;
+	var messageID = crypto.randomBytes(8).toString("hex");
         var message = {
             body: JSON.stringify({
                 messageID: messageID,
@@ -216,13 +221,15 @@ function sendFile(filePath, fileName) {
                 segmentIndex: index,
                 totalSegments: segments.length
             }, null, 4),
-            attachment: fs.createReadStream(segmentPath)
+            attachment: fileReadStream
         }
         messageCallbacks[messageID] = () => {
             uploadedSegments++;
-            console.log("Uploaded segment "+(index + 1)+"/"+segments.length+". Erasing temporary file.");
+            console.log("\nUploaded segment "+(index + 1)+"/"+segments.length+". Erasing temporary file.");
             fs.unlinkSync(segmentPath);
             delete messageCallbacks[messageID];
+            
+            completed = true;
 
             if (uploadedSegments == segments.length) {
                 console.log("Done uploading file "+fileName+".");
@@ -236,9 +243,18 @@ function sendFile(filePath, fileName) {
             if (err) {
                 console.error(err);
                 console.log("Retrying...");
-                upload();
+		completed = true;
+                setTimeout(upload, 1000);
             }
         });
+
+        probe();
+	function probe() {
+	  if (!completed) {
+	    printDownloadProgress(fileReadStream.bytesRead, fileSize);
+	    setTimeout(probe, 100);
+	  }
+	}
     }
 }
 
@@ -340,7 +356,6 @@ function downloadFile(upload) {
         https.get(upload.segments[index], (response) => {
 
             var length = parseInt(response.headers["content-length"]);
-	    console.log(response.headers["content-type"]);
 	    var written = 0;
             var data = Buffer.alloc(length);
 
