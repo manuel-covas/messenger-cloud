@@ -385,7 +385,9 @@ function downloadFile(upload) {
                 }
             });
         }).on("error", (err) => {
-	    console.error(err);                                           console.log("Retrying failed download...");                   setTimeout(fetchSegment, 2000);
+	    console.error(err);
+	    console.log("Retrying failed download...");
+	    setTimeout(fetchSegment, 2000);
 	});
     }
 }
